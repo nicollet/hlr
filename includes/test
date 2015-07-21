@@ -1,0 +1,30 @@
+# test file for hlr benchmark
+
+TITI="www.google.fr www.google.com"
+TOTO="TITI,tootella.org"
+
+include "include_test"
+
+INPUT:
+	-s TITI -d TOTO --dport 3128
+
+	## comment not seen
+	# a comment
+	-s TITI -d TOTO --dports 3128,2192
+
+OUTPUT:
+	# this comment is not seen
+
+	-d jeru.org -s 194.246.28.4 -j ACCEPT
+
+MYCHAIN:
+	-p icmp -j ACCEPT
+	-s www.example.org -j RETURN
+	-j REJECT
+
+# a simple line
+-A INPUT -s www.google.com -d www.google.com -j ACCEPT reflexive
+
+## add other tables
+-t raw -A INPUT -d 127.0.0.1 -j NOTRACK
+
