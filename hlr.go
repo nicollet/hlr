@@ -11,10 +11,7 @@ import (
 
 func main() {
 	// include_regexp, _ := regexp.Compile(`^\s*include\s+"(.*?)"`)
-	rf := ReadFile{
-		doneFiles:     make(map[string]bool),
-		includeRegexp: regexp.MustCompile(`^\s*include\s+"(.*?)"`),
-	}
+	rf := newReadFile()
 	rf.readFile("test")
 	//for _, line := range rf.readFile("test") {
 	//	fmt.Println(line)
@@ -24,6 +21,13 @@ func main() {
 type ReadFile struct {
 	doneFiles     map[string]bool
 	includeRegexp *regexp.Regexp
+}
+
+func newReadFile() ReadFile {
+	return ReadFile{
+		doneFiles:     make(map[string]bool),
+		includeRegexp: regexp.MustCompile(`^\s*include\s+"(.*?)"`),
+	}
 }
 
 func (rf ReadFile) readFile(file_name string) []string {
