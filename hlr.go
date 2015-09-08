@@ -23,24 +23,54 @@ func main() {
 	for {
 		filePos, err := nextNoSpace(chFilePos)
 		if err != nil {
-			fmt.Print(err)
-		} else {
-			fmt.Printf("%c", filePos.r)
+			break
 		}
+		fmt.Printf("first letter: %c ", filePos.r)
+		varName, err := getUpWord(chFilePos, filePos.r)
+		if err != nil {
+			fmt.Printf("not Upcase: %v\n", err)
+			continue
+		}
+		fmt.Printf("variable name: %v\n", varName)
 	}
 }
 
+func isSpace(r rune) bool {
+	if r == ' ' || r == '\t' || r == '\n' {
+		return true
+	}
+	return false
+}
+
 func nextNoSpace(ch chan FilePos) (FilePos, error) {
-	var filePos FilePos
-	for {
-		filePos = <-ch
+	for filePos := range ch {
 		r := filePos.r
-		if r != ' ' || r != '\t' || r != '\n' {
+		if !isSpace(r) {
 			return filePos, nil
 		}
-		fmt.Printf("%c", filePos.r)
+		// fmt.Printf("%c", filePos.r)
 	}
-	return filePos, errors.New("Can't find any space")
+	return FilePos{}, errors.New("Can't find any space")
+}
+
+func getUpWord(ch chan FilePos, firstLetter rune) (upWord string, Err error) {
+
+	r := firstLetter
+	var vName string = string(r)
+	if !(r == '_' || r >= 'A' && r <= 'Z') {
+		return string(r), errors.New("First letter not uppcase " + string(r))
+	}
+	for filePos := range ch {
+		r = filePos.r
+		if isSpace(r) {
+			break
+		}
+		if !(r == '_' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9') {
+			return "", errors.New("No uppcase word" + string(r))
+		}
+		vName += string(r)
+	}
+	return vName, nil
 }
 
 type FilePos struct {
