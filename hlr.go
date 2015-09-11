@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
-	// "errors"
 	"fmt"
 	"log"
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -21,44 +21,19 @@ func main() {
 	}
 
 	go l.run()
-	for i := 0; i < 1000; i++ {
-		fmt.Printf("item: %v\n", <-l.items)
+	for {
+		item, more := <-l.items
+		if !more {
+			break
+		}
+		fmt.Printf("item: %v\n", item)
 	}
-
-	//	for line := 0; line < 10; line++ {
-	//		l.nextNoSpace()
-	//		if l.getUpWord() {
-	//			varName := <-l.items
-	//			fmt.Printf("item: %v\n", varName)
-	//
-	//			// looking for =
-	//			l.nextNoSpace()
-	//			if l.getEqual() {
-	//				equal := <-l.items
-	//				fmt.Printf("item: %v\n", equal)
-	//
-	//				l.nextNoSpace()
-	//				if l.getVarValue() {
-	//					value := <-l.items
-	//					fmt.Printf("item: %v\n", value)
-	//				} else {
-	//					fmt.Printf("No variable")
-	//					l.nextLine()
-	//				}
-	//			} else {
-	//				l.nextLine()
-	//			}
-	//		} else {
-	//			l.nextLine()
-	//		}
-	//	}
 }
 
+const eof = -1
+
 func isSpace(r rune) bool {
-	if r == ' ' || r == '\t' || r == '\n' {
-		return true
-	}
-	return false
+	return unicode.IsSpace(r)
 }
 
 func isUpper(r rune) bool {
@@ -111,7 +86,7 @@ func (l *lexer) run() {
 func (l *lexer) next() rune {
 	if l.pos >= len(l.input) {
 		l.width = 0
-		return 'Z'
+		return eof
 	}
 	var r rune
 	r, l.width = utf8.DecodeRuneInString(l.input[l.pos:])
@@ -131,7 +106,7 @@ func (l *lexer) ignore() {
 func (l *lexer) nextNoSpace() (ret int) {
 	for {
 		r := l.next()
-		if r == 'Z' {
+		if r == eof {
 			break
 		}
 		// place the cursor at the beginning of next word
@@ -148,7 +123,7 @@ func (l *lexer) nextNoSpace() (ret int) {
 func (l *lexer) nextLine() {
 	for {
 		r := l.next()
-		if r == 'Z' {
+		if r == eof {
 			break
 		}
 		if r == '\n' {
@@ -170,6 +145,9 @@ func (l *lexer) emitString(t itemType, val string) {
 
 func (l *lexer) getEqual() stateFn {
 	r := l.next()
+	if r == eof {
+		return nil
+	}
 	if r == '=' {
 		l.emit(itemEqual)
 		l.nextNoSpace()
@@ -183,7 +161,8 @@ func (l *lexer) getEqual() stateFn {
 func (l *lexer) getUpWord() stateFn {
 	l.nextNoSpace()
 	r := l.next()
-	if r == 'Z' {
+	if r == eof {
+		l.emit(itemEOF)
 		return nil
 	}
 	if !(isUpper(r) || r == '_') {
@@ -193,7 +172,7 @@ func (l *lexer) getUpWord() stateFn {
 
 	for {
 		r = l.next()
-		if r == 'Z' {
+		if r == eof {
 			return nil
 		}
 
