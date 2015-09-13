@@ -2,7 +2,6 @@ package parse
 
 import (
 	"fmt"
-	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -188,30 +187,25 @@ func (l *lexer) getVarValue() stateFn {
 	}
 	l.nextNoSpace()
 
-	var val string
-	successive_spaces := 0
 	for {
 		r = l.next()
-		if r == '"' {
-			// remove last comma if needed
-			if strings.HasSuffix(val, ",") {
-				val = val[:len(val)-1]
-			}
-			l.emitString(itemVarValue, val)
+		if r == eof {
+			return nil
+		}
+		if isSpace(r) || r == ',' || r == '"' {
+			l.backup()
+			l.emit(itemVarValue)
 			l.nextNoSpace()
-			return l.getUpWord
+			if r == '"' {
+				break
+			}
+			if r == ',' {
+				l.next()
+				l.ignore()
+			}
 		}
-		if isSpace(r) {
-			successive_spaces++
-			continue
-		}
-		if successive_spaces > 0 {
-			val += ","
-			successive_spaces = 0
-		}
-		val += string(r)
 	}
-	return nil // never get there: errors to be handled
+	return l.getUpWord
 }
 
 // return an error item
@@ -224,13 +218,13 @@ func (l *lexer) errorF(format string, args ...interface{}) stateFn {
 func (i item) String() string {
 	switch i.typ {
 	case itemEOF:
-		return "EOF"
+		return "[EOF]"
 	case itemVarName:
-		return fmt.Sprintf("variable: %s", i.val)
+		return fmt.Sprintf("variable: [%s]", i.val)
 	case itemEqual:
-		return "="
+		return "[=]"
 	case itemVarValue:
-		return fmt.Sprintf("varValue: %s", i.val)
+		return fmt.Sprintf("varValue: [%s]", i.val)
 	}
 	if len(i.val) > 10 {
 		return fmt.Sprintf("%.10q...", i.val)
