@@ -2,6 +2,7 @@ package parse
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -84,19 +85,28 @@ func (l *lexer) backup() {
 	l.pos -= l.width
 }
 
+// function peek() returns but does not
+// consume the next rune
+func (l lexer) peek() rune {
+	if l.pos >= len(l.input) {
+		return eof
+	}
+	var r rune
+	r, _ = utf8.DecodeRuneInString(l.input[l.pos:])
+	return r
+}
+
 func (l *lexer) ignore() {
 	l.itemStart = l.pos
 }
 
-// return the number of spaces encountered
-func (l *lexer) nextNoSpace() (ret int) {
+func (l *lexer) nextNoSpaceOr(match string) (ret int) {
 	for {
 		r := l.next()
 		if r == eof {
 			break
 		}
-		// place the cursor at the beginning of next word
-		if !isSpace(r) {
+		if !(isSpace(r) || strings.ContainsRune(match, r)) {
 			l.backup()
 			break
 		}
@@ -104,6 +114,11 @@ func (l *lexer) nextNoSpace() (ret int) {
 	}
 	l.ignore()
 	return ret
+}
+
+// return the number of spaces encountered
+func (l *lexer) nextNoSpace() (ret int) {
+	return l.nextNoSpaceOr("")
 }
 
 func (l *lexer) nextLine() {
@@ -120,6 +135,9 @@ func (l *lexer) nextLine() {
 }
 
 func (l *lexer) emit(t itemType) {
+	//if t == itemVarValue && l.itemStart == l.pos {
+	//	return
+	//}
 	l.items <- item{t, l.input[l.itemStart:l.pos]}
 	l.itemStart = l.pos
 }
@@ -185,8 +203,8 @@ func (l *lexer) getVarValue() stateFn {
 		fmt.Printf("not first double-quotes: %c\n", r)
 		return nil
 	}
-	l.nextNoSpace()
 
+	l.nextNoSpaceOr(",")
 	for {
 		r = l.next()
 		if r == eof {
@@ -195,13 +213,10 @@ func (l *lexer) getVarValue() stateFn {
 		if isSpace(r) || r == ',' || r == '"' {
 			l.backup()
 			l.emit(itemVarValue)
-			l.nextNoSpace()
-			if r == '"' {
-				break
-			}
-			if r == ',' {
+			l.nextNoSpaceOr(",")
+			if l.peek() == '"' {
 				l.next()
-				l.ignore()
+				break
 			}
 		}
 	}
